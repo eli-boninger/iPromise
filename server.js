@@ -10,7 +10,6 @@ function sleep(ms) {
 
 app.get('/seconds/:n', async (req, res) => {
     const { n } = req.params;
-    console.log("req:", n);
     await sleep(n * 1000);
     res.json({
         responseTime: `~${n} seconds`,
