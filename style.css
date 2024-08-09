@@ -61,7 +61,7 @@ body {
 }
 .request__result {
   width: 40%;
-  max-height: 10rem;
+  height: 10rem;
   overflow-y: scroll;
   background-color: white;
   padding: 1rem;

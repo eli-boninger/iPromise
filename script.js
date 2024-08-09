@@ -1,4 +1,4 @@
-
+/******* DOM Manipulation Functions *********/
 
 const createLoaderDot = () => {
     const div = document.createElement('div');
@@ -40,6 +40,30 @@ const addRequestDetails = (buttonDivEl, text) => {
     buttonDivEl.appendChild(p2);
 };
 
+const createRequestSection = (descriptionText) => {
+    const divEl = document.createElement('div');
+    divEl.classList.add('request');
+
+    const pEl = document.createElement('p');
+    pEl.classList.add('request__description');
+    pEl.innerText = descriptionText;
+
+    const buttonEl = document.createElement('button');
+    buttonEl.innerText = 'Make request';
+    buttonEl.classList.add('request__button');
+
+    const detailsEl = document.createElement('div');
+    detailsEl.classList.add("request__result");
+
+    divEl.appendChild(pEl);
+    divEl.appendChild(buttonEl);
+    divEl.appendChild(detailsEl);
+    return [divEl, buttonEl, detailsEl];
+
+};
+
+/******** Async request functions *******/
+
 function getRandomArbitrary(min, max) {
     return Math.round(100 * (Math.random() * (max - min) + min)) / 100;
 }
@@ -48,78 +72,54 @@ const makeAsyncRequest = async (numSeconds) => {
     return await axios.get(`http://localhost:8080/seconds/${numSeconds}`);
 };
 
-const button1 = document.getElementById('button1');
-const button2 = document.getElementById('button2');
-const button3 = document.getElementById('button3');
-const button4 = document.getElementById('button4');
-const button1div = document.getElementById('button1-call');
-const button2div = document.getElementById('button2-call');
-const button3div = document.getElementById('button3-call');
-const button4div = document.getElementById('button4-call');
-
-button1.addEventListener('click', async (e) => {
+const createEventListener = (numsRequests, detailsDiv, parallel = true, awaited = true) => async (e) => {
     addLoaderDOM(e.target);
-    const reqLength = getRandomArbitrary(2, 5);
+    const arr = new Array(numsRequests).fill(undefined);
+    const lengths = arr.map((a) => { let l = getRandomArbitrary(2, 5); console.log(l); return l; });
 
-    addRequestDetails(button1div, `await axios.get('API endpoint') // ${reqLength}s request`);
-
-    const startTime = performance.now();
-    await makeAsyncRequest(reqLength);
-    const endTime = performance.now();
-
-
-    removeLoaderDOM(e.target);
-    e.target.innerText = `Line of code blocked execution for ${Math.round(100 * ((endTime - startTime) / 1000)) / 100}s`;
-});
-
-button2.addEventListener('click', async (e) => {
-    addLoaderDOM(e.target);
-    const reqOneLength = getRandomArbitrary(2, 5);
-    let reqTwoLength = getRandomArbitrary(2, 5);
-    if (reqOneLength === reqTwoLength) {
-        reqTwoLength += 0.01;
+    let detailStr;
+    if (lengths.length > 1 && parallel) {
+        detailStr = `await Promise.all([${lengths.map(l => `${l}s request`).join(', ')})])`;
+    } else if (lengths.length > 1) {
+        detailStr = lengths.map(l => `await axios.get('API Endpoint') // ${l}s request`).join('\n');
+    } else {
+        detailStr = `${awaited ? 'await ' : ''} axios.get('API endpoint') // ${lengths[0]}s request`;
     }
 
-    addRequestDetails(button2div, `await Promise.all[(${reqOneLength}s request, ${reqTwoLength}s request)]`);
+    addRequestDetails(detailsDiv, detailStr);
 
     const startTime = performance.now();
-    await Promise.all([makeAsyncRequest(reqOneLength), makeAsyncRequest(reqTwoLength)]);
-    const endTime = performance.now();
-
-
-    removeLoaderDOM(e.target);
-    e.target.innerText = `Line of code blocked execution for ${Math.round(100 * ((endTime - startTime) / 1000)) / 100}s`;
-});
-
-button3.addEventListener('click', async (e) => {
-    addLoaderDOM(e.target);
-    const reqLength = getRandomArbitrary(2, 5);
-
-    addRequestDetails(button3div, `axios.get('API Endpoint') // ${reqLength}s request`);
-
-    const startTime = performance.now();
-    makeAsyncRequest(reqLength);
+    if (parallel && awaited) {
+        await Promise.all(lengths.map(l => makeAsyncRequest(l)));
+    } else if (parallel) {
+        Promise.all(lengths.map(l => makeAsyncRequest(l)));
+    } else {
+        for (let i = 0; i < lengths.length; i++) {
+            await makeAsyncRequest(lengths[i]);
+        }
+    }
     const endTime = performance.now();
 
     removeLoaderDOM(e.target);
-    e.target.innerText = `Line of code blocked execution for ${Math.round(100 * ((endTime - startTime))) / 100}ms`;
+    const secondsDuration = Math.round(100 * ((endTime - startTime) / 1000)) / 100;
+    const msDuration = Math.round(100 * ((endTime - startTime))) / 100;
+    e.target.innerText = `Line(s) of code blocked execution for ${awaited ? `${secondsDuration}s` : `${msDuration}ms`}`;
+};
 
-});
+const [req1, req1Button, req1Div] = createRequestSection('Single awaited request');
+req1Button.addEventListener('click', createEventListener(1, req1Div));
 
+const [req2, req2Button, req2Div] = createRequestSection('Multiple awaited requests (in sequence)');
+req2Button.addEventListener('click', createEventListener(2, req2Div, false));
 
-button4.addEventListener('click', async (e) => {
-    addLoaderDOM(e.target);
-    const reqOneLength = getRandomArbitrary(2, 5);
-    const reqTwoLength = getRandomArbitrary(2, 5);
+const [req3, req3Button, req3Div] = createRequestSection('Multiple awaited requests (in parallel with Promise.all)');
+req3Button.addEventListener('click', createEventListener(2, req3Div, true, true));
 
-    addRequestDetails(button4div, `await axios.get('API Endpoint') // ${reqOneLength}s request\nawait axios.get('API Endpoint') // ${reqTwoLength}s request`);
+const [req4, req4Button, req4Div] = createRequestSection('One request not awaited');
+req4Button.addEventListener('click', createEventListener(1, req4Div, true, false));
 
-    const startTime = performance.now();
-    await makeAsyncRequest(reqOneLength);
-    await makeAsyncRequest(reqTwoLength);
-    const endTime = performance.now();
-
-    removeLoaderDOM(e.target);
-    e.target.innerText = `Lines of code blocked execution for ${Math.round(100 * ((endTime - startTime))) / 100}ms`;
-
-});
+const main = document.getElementById('main');
+main.appendChild(req1);
+main.appendChild(req2);
+main.appendChild(req3);
+main.appendChild(req4);
