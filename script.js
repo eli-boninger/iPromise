@@ -74,10 +74,10 @@ const makeAsyncRequest = async (numSeconds) => {
     return await axios.get(`http://localhost:8080/seconds/${numSeconds}`);
 };
 
-const createEventListener = (numsRequests, parallel = true, awaited = true) => (detailsDiv) => async (e) => {
+const createEventListener = (numRequests, parallel = true, awaited = true) => (detailsDiv) => async (e) => {
     addLoaderDOM(e.target);
-    const arr = new Array(numsRequests).fill(undefined);
-    const lengths = arr.map((a) => { let l = getRandomArbitrary(2, 5); console.log(l); return l; });
+    const arr = new Array(numRequests).fill(undefined);
+    const lengths = arr.map((a) => { let l = getRandomArbitrary(2, 5); return l; });
 
     let detailStr;
     if (lengths.length > 1 && parallel) {
@@ -92,12 +92,28 @@ const createEventListener = (numsRequests, parallel = true, awaited = true) => (
 
     const startTime = performance.now();
     if (parallel && awaited) {
-        await Promise.all(lengths.map(l => makeAsyncRequest(l)));
+        try {
+            await Promise.all(lengths.map(l => makeAsyncRequest(l)));
+        } catch (e) {
+            console.log(e);
+            addRequestDetails(detailsDiv, `${e}\n${e.response.data}`);
+        }
+
     } else if (parallel) {
-        Promise.all(lengths.map(l => makeAsyncRequest(l)));
+        try {
+            Promise.all(lengths.map(l => makeAsyncRequest(l)));
+        } catch (e) {
+            addRequestDetails(detailsDiv, `${e}\n${e.response.data}`);
+        }
+
     } else {
         for (let i = 0; i < lengths.length; i++) {
-            await makeAsyncRequest(lengths[i]);
+            try {
+                await makeAsyncRequest(lengths[i]);
+            } catch (e) {
+                addRequestDetails(detailsDiv, `${e}\n${e.response.data}`);
+            }
+
         }
     }
     const endTime = performance.now();
@@ -106,6 +122,7 @@ const createEventListener = (numsRequests, parallel = true, awaited = true) => (
     const secondsDuration = Math.round(100 * ((endTime - startTime) / 1000)) / 100;
     const msDuration = Math.round(100 * ((endTime - startTime))) / 100;
     e.target.innerText = `Line(s) of code blocked execution for ${awaited ? `${secondsDuration}s` : `${msDuration}ms`}`;
+
 };
 
 

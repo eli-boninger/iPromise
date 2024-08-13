@@ -16,6 +16,20 @@ app.get('/seconds/:n', async (req, res) => {
     });
 });
 
+app.get('/seconds/:n/error-prone', async (req, res) => {
+    const { n } = req.params;
+    await sleep(n * 1000);
+
+    if (Math.random() < 0.5) {
+        res.json({
+            responseTime: `~${n} seconds`,
+        });
+    } else {
+        res.status(500).send(`Request with time ${n}s server error`);
+    }
+
+});
+
 app.listen(8080, () => {
     console.log("server is listening on port 8080");
 });
